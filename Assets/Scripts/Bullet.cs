@@ -1,25 +1,47 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
-public class Bullet : MonoBehaviour
+public class Bullet : NetworkBehaviour
 {
     private const float lifeTime = 15f;
-    private Actor ower = null;
+    [SyncVar]
     private bool isNeedMove = false;
+    [SyncVar]
     private bool isHited = false;
+    [SyncVar]
     private float firedTime = 0f;
-    private int damage = 0;
 
     [SerializeField]
     private CapsuleCollider bulletCollider = null;
+    [SyncVar]
     [SerializeField]
     private Vector3 moveDirection = Vector3.zero;
+    [SyncVar]
     [SerializeField]
     private float speed = 0f;
+    [SyncVar]
+    [SerializeField]
+    private int damage = 0;
+    [SyncVar]
+    [SerializeField]
+    private int owerInstanceID = 0;
 
+    [SyncVar]
     private string filePath = string.Empty;
     public string FilePath { get { return filePath; } set { filePath = value; } }
+
+    private void Start()
+    {
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == false)
+        {
+            InGameSceneMain inGameSceneMain = SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>();
+            transform.SetParent(inGameSceneMain.BulletManager.transform);
+            inGameSceneMain.CacheSystem.Add(filePath, gameObject);
+            gameObject.SetActive(false);
+        }
+    }
 
     private void Update()
     {
@@ -39,16 +61,18 @@ public class Bullet : MonoBehaviour
         transform.position += moveVector;
     }
 
-    public void FireBullet(Actor _ower, Vector3 _firePos, Vector3 _fireDir, float _speed, int _damage)
+    public void FireBullet(int _actorInstanceID, Vector3 _firePos, Vector3 _fireDir, float _speed, int _damage)
     {
-        ower                = _ower;
-        transform.position  = _firePos;
-        moveDirection       = _fireDir;
-        speed               = _speed;
-        damage              = _damage;
+        moveDirection = _fireDir;
+        speed = _speed;
+        damage = _damage;
+        owerInstanceID = _actorInstanceID;
+        SetPosition(_firePos);
 
         isNeedMove = true;
         firedTime = Time.time;
+
+        UpdateNetworkBullet();
     }
 
     private Vector3 AdjustMove(Vector3 _moveVec)
@@ -74,11 +98,12 @@ public class Bullet : MonoBehaviour
             return;
         }
 
+        Actor ower = SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().ActorManager.GetActor(owerInstanceID);
         Actor actor = _collider.GetComponentInParent<Actor>();
         if (actor != null && actor.IsDead == true || actor.gameObject.layer == ower.gameObject.layer)
             return;
 
-        actor.OnBulletHited(ower, damage, transform.position);
+        actor.OnBulletHited(damage, transform.position);
 
         isHited = true;
         isNeedMove = false;
@@ -116,5 +141,63 @@ public class Bullet : MonoBehaviour
     private void Disappear()
     {
         SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().BulletManager.Remove(this);
+    }
+
+    [ClientRpc]
+    public void RpcSetActive(bool _value)
+    {
+        this.gameObject.SetActive(_value);
+        base.SetDirtyBit(1);
+    }
+
+    public void SetPosition(Vector3 _position)
+    {
+        if (isServer == true)
+        {
+            RpcSetPosition(_position);
+        }
+        else
+        {
+            CmdSetPosition(_position);
+            if (isLocalPlayer)
+                transform.position = _position;
+        }
+    }
+
+    [Command]
+    public void CmdSetPosition(Vector3 _position)
+    {
+        this.transform.position = _position;
+        base.SetDirtyBit(1);
+    }
+
+    [ClientRpc]
+    public void RpcSetPosition(Vector3 _position)
+    {
+        this.transform.position = _position;
+        base.SetDirtyBit(1);
+    }
+
+    public void UpdateNetworkBullet()
+    {
+        if (isServer == true)
+        {
+            RpcUpdateNetworkBullet();
+        }
+        else
+        {
+            CmdUpdateNetworkBullet();
+        }
+    }
+    [Command]
+    public void CmdUpdateNetworkBullet()
+    {
+        base.SetDirtyBit(1);
+    }
+
+    [ClientRpc]
+    public void RpcUpdateNetworkBullet()
+    {
+        base.SetDirtyBit(1);
     }
 }

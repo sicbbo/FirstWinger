@@ -42,7 +42,8 @@ public enum DamageType
 
 public enum GameState
 {
-    Ready = 0,
+    None = 0,
+    Ready,
     Running,
     End,
 }

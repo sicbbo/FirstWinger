@@ -5,7 +5,7 @@ using UnityEngine;
 public class SquadronManager : MonoBehaviour
 {
     private float gameStartedTime = 0f;
-    private int squadronIndex = 0;
+    private int scheduleIndex = 0;
     private bool isRunning = false;
 
     [SerializeField]
@@ -32,7 +32,7 @@ public class SquadronManager : MonoBehaviour
     public void StartGame()
     {
         gameStartedTime = Time.time;
-        squadronIndex = 0;
+        scheduleIndex = 0;
         isRunning = true;
     }
 
@@ -41,12 +41,13 @@ public class SquadronManager : MonoBehaviour
         if (isRunning == false)
             return;
 
-        if (Time.time - gameStartedTime >= squadronScheduleTable.GetScheduleData(squadronIndex).generateTime)
+        SquadronScheduleDataStruct data = squadronScheduleTable.GetScheduleData(scheduleIndex);
+        if (Time.time - gameStartedTime >= squadronScheduleTable.GetScheduleData(scheduleIndex).generateTime)
         {
-            GenerateSquadron(squadronDatas[squadronIndex]);
-            squadronIndex++;
+            GenerateSquadron(squadronDatas[data.squadronID]);
+            scheduleIndex++;
 
-            if (squadronIndex >= squadronDatas.Length)
+            if (scheduleIndex >= squadronScheduleTable.GetDataCount())
             {
                 AllSquadronGenerated();
                 return;

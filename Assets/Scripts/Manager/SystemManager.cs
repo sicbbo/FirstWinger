@@ -10,6 +10,9 @@ public class SystemManager : MonoBehaviour
     [SerializeField]
     private EnemyTable enemyTable = null;
     public EnemyTable EnemyTable { get { return enemyTable; } }
+    [SerializeField]
+    private NetworkConnectionInfo connectionInfo = new NetworkConnectionInfo();
+    public NetworkConnectionInfo ConnectionInfo { get { return connectionInfo; } }
 
     private BaseSceneMain currentSceneMain = null;
     public BaseSceneMain CurrentSceneMain { set { currentSceneMain = value; } }

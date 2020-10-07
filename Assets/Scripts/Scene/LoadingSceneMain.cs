@@ -50,7 +50,24 @@ public class LoadingSceneMain : BaseSceneMain
 
     private void GotoNextScene()
     {
-        SceneController.Instance.LoadScene(SceneType.InGame);
+        NetworkConnectionInfo info = SystemManager.Instance.ConnectionInfo;
+        if (info.Host == true)
+        {
+            Debug.Log("FW Start with host!");
+            FWNetworkManager.singleton.StartHost();
+        }
+        else
+        {
+            Debug.Log("FW Start with client!");
+
+            if (string.IsNullOrEmpty(info.IPAdress) == false)
+                FWNetworkManager.singleton.networkAddress = info.IPAdress;
+            if (info.Port != FWNetworkManager.singleton.networkPort)
+                FWNetworkManager.singleton.networkPort = info.Port;
+
+            FWNetworkManager.singleton.StartClient();
+        }
+
         isNextSceneCall = true;
     }
 }

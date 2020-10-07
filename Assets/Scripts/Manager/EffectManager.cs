@@ -51,7 +51,7 @@ public class EffectManager : MonoBehaviour
         for (int i = 0; i < effectFiles.Length; i++)
         {
             GameObject obj = Load(effectFiles[i].filePath);
-            SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().CacheSystem.GenerateCache(effectFiles[i].filePath, obj, effectFiles[i].cacheCount);
+            SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().CacheSystem.GenerateCache(effectFiles[i].filePath, obj, effectFiles[i].cacheCount, this.transform);
         }
     }
 

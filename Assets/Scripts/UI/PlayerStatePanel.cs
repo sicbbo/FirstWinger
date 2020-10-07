@@ -10,13 +10,34 @@ public class PlayerStatePanel : BasePanel
     [SerializeField]
     private UIGage HPGage = null;
 
+    private Player player = null;
+    public Player Player
+    {
+        get
+        {
+            if (player == null)
+                player = SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().Player;
+            return player;
+        }
+    }
+
     public void SetScore(int _value)
     {
         scoreValue.text = _value.ToString();
     }
 
-    public void SetHP(float _currentValue, float _maxValue)
+    public override void InitializePanel()
     {
-        HPGage.SetGage(_currentValue, _maxValue);
+        base.InitializePanel();
+        HPGage.SetGage(100, 100);
+    }
+
+    public override void UpdatePanel()
+    {
+        base.UpdatePanel();
+        if (player != null)
+        {
+            HPGage.SetGage(player.CurrentHP, player.MaxHP);
+        }
     }
 }

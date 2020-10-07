@@ -1,37 +1,67 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
 public class Enemy : Actor
 {
     [SerializeField]
+    [SyncVar]
     private EnemyState currentState = EnemyState.None;
     [SerializeField]
+    [SyncVar]
     private Vector3 targetPosition = Vector3.zero;
     [SerializeField]
+    [SyncVar]
     private float currentSpeed = 0f;
     [SerializeField]
     private Transform fireTrans = null;
     [SerializeField]
+    [SyncVar]
     private float bulletSpeed = 1f;
     [SerializeField]
+    [SyncVar]
     private int fireRemainCount = 1;
     [SerializeField]
+    [SyncVar]
     private int gamePoint = 50;
 
+    [SyncVar]
+    [SerializeField]
     private string filePath = string.Empty;
     public string FilePath { get { return filePath; } set { filePath = value; } }
 
     private const float maxSpeed = 10.0f;
     private const float maxSpeedTime = 0.5f;
 
+    [SyncVar]
     private Vector3 currentVelocity;
+    [SyncVar]
     private float moveStartTime = 0f;
 
+    [SyncVar]
     private float lastActionUpdateTime = 0f;
 
+    [SyncVar]
     private Vector3 appearPoint = Vector3.zero;
+    [SyncVar]
     private Vector3 disappearPoint = Vector3.zero;
+
+    protected override void Initialize()
+    {
+        base.Initialize();
+
+        InGameSceneMain inGameSceneMain = SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>();
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == false)
+        {
+            transform.SetParent(inGameSceneMain.EnemyManager.transform);
+            inGameSceneMain.CacheSystem.Add(filePath, gameObject);
+            gameObject.SetActive(false);
+        }
+
+        if (actorInstanceID != 0)
+            inGameSceneMain.ActorManager.Regist(actorInstanceID, this);
+    }
 
     protected override void UpdateActor()
     {
@@ -92,6 +122,20 @@ public class Enemy : Actor
 
     public void Reset(SquadronMemberStruct _data)
     {
+        if (isServer == true)
+        {
+            RpcReset(_data);
+        }
+        else
+        {
+            CmdReset(_data);
+            if (isLocalPlayer == true)
+                ResetData(_data);
+        }
+    }
+
+    private void ResetData(SquadronMemberStruct _data)
+    {
         EnemyStruct enemyStruct = SystemManager.Instance.EnemyTable.GetEnemyData(_data.enemyID);
 
         currentHP = maxHP = enemyStruct.maxHP;
@@ -105,6 +149,8 @@ public class Enemy : Actor
 
         currentState = EnemyState.Ready;
         lastActionUpdateTime = Time.time;
+
+        isDead = false;
     }
 
     private void Appear(Vector3 _targetPos)
@@ -160,25 +206,20 @@ public class Enemy : Actor
                 Vector3 crashPos = player.transform.position + box.center;
                 crashPos.x += box.size.x * 0.5f;
 
-                player.OnCrash(this, crashDamage, crashPos);
+                player.OnCrash(crashDamage, crashPos);
             }
         }
-    }
-
-    public override void OnCrash(Actor _attacker, int _damage, Vector3 _crashPos)
-    {
-        base.OnCrash(_attacker, _damage, _crashPos);
     }
 
     public void FireBullet()
     {
         Bullet bullet = SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().BulletManager.Generate(BulletType.EnemyBullet);
-        bullet.FireBullet(this, fireTrans.position, -fireTrans.right, bulletSpeed, damage);
+        bullet.FireBullet(actorInstanceID, fireTrans.position, -fireTrans.right, bulletSpeed, damage);
     }
 
-    protected override void OnDead(Actor _killer)
+    protected override void OnDead()
     {
-        base.OnDead(_killer);
+        base.OnDead();
 
         SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().GamePointAccumulator.Accumulate(gamePoint);
         SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().EnemyManager.RemoveEnemy(this);
@@ -186,11 +227,25 @@ public class Enemy : Actor
         currentState = EnemyState.Dead;
     }
 
-    protected override void DecreaseHP(Actor _attacker, int _value, Vector3 _damagePos)
+    protected override void DecreaseHP(int _value, Vector3 _damagePos)
     {
-        base.DecreaseHP(_attacker, _value, _damagePos);
+        base.DecreaseHP(_value, _damagePos);
 
         Vector3 damagePoint = _damagePos + Random.insideUnitSphere * 0.5f;
         SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().DamageManager.GenerateDamage(DamageType.Normal, damagePoint, _value, Color.magenta);
+    }
+
+    [Command]
+    public void CmdReset(SquadronMemberStruct _data)
+    {
+        ResetData(_data);
+        base.SetDirtyBit(1);
+    }
+
+    [ClientRpc]
+    public void RpcReset(SquadronMemberStruct _data)
+    {
+        ResetData(_data);
+        base.SetDirtyBit(1);
     }
 }

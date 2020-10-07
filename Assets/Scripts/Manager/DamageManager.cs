@@ -6,6 +6,7 @@ public class DamageManager : MonoBehaviour
 {
     [SerializeField]
     private Transform canvasTrans = null;
+    public Transform CanvasTrans { get { return canvasTrans; } }
     [SerializeField]
     PrefabCacheData[] damageFiles = null;
 

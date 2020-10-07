@@ -9,11 +9,6 @@ public class BulletManager : MonoBehaviour
 
     private Dictionary<string, GameObject> fileCache = new Dictionary<string, GameObject>();
 
-    private void Start()
-    {
-        Prepare();
-    }
-
     public GameObject Load(string _resourcePath)
     {
         GameObject obj = null;
@@ -36,26 +31,34 @@ public class BulletManager : MonoBehaviour
 
     public void Prepare()
     {
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == false)
+            return;
+
         for (int i = 0; i < bulletFiles.Length; i++)
         {
             GameObject obj = Load(bulletFiles[i].filePath);
-            SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().CacheSystem.GenerateCache(bulletFiles[i].filePath, obj, bulletFiles[i].cacheCount);
+            SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().CacheSystem.GenerateCache(bulletFiles[i].filePath, obj, bulletFiles[i].cacheCount, this.transform);
         }
     }
 
     public Bullet Generate(BulletType _bulletType)
     {
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == false)
+            return null;
+
         string filePath = bulletFiles[(int)_bulletType].filePath;
         GameObject obj = SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().CacheSystem.Archive(filePath);
 
         Bullet bullet = obj.GetComponent<Bullet>();
-        bullet.FilePath = filePath;
 
         return bullet;
     }
 
     public bool Remove(Bullet _bullet)
     {
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == false)
+            return true;
+
         SystemManager.Instance.GetCurrentSceneMain<InGameSceneMain>().CacheSystem.Restore(_bullet.FilePath, _bullet.gameObject);
         return true;
     }

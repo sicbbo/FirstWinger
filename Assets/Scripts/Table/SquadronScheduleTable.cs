@@ -31,4 +31,9 @@ public class SquadronScheduleTable : TableLoader<SquadronScheduleDataStruct>
 
         return dataTables[_index];
     }
+
+    public int GetDataCount()
+    {
+        return dataTables.Count;
+    }
 }

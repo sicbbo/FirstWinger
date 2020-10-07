@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Networking;
 
 [System.Serializable]
 public class PrefabCacheData
@@ -27,6 +28,20 @@ public class PrefabCacheSystem
                 GameObject obj = Object.Instantiate<GameObject>(_gameObject, _parentTrans);
                 obj.SetActive(false);
                 queue.Enqueue(obj);
+
+                Enemy enemy = obj.GetComponent<Enemy>();
+                if (enemy != null)
+                {
+                    enemy.FilePath = _filePath;
+                    NetworkServer.Spawn(obj);
+                }
+
+                Bullet bullet = obj.GetComponent<Bullet>();
+                if (bullet != null)
+                {
+                    bullet.FilePath = _filePath;
+                    NetworkServer.Spawn(obj);
+                }
             }
 
             caches.Add(_filePath, queue);
@@ -44,6 +59,21 @@ public class PrefabCacheSystem
         GameObject obj = caches[_filePath].Dequeue();
         obj.SetActive(true);
 
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == true)
+        {
+            Enemy enemy = obj.GetComponent<Enemy>();
+            if (enemy != null)
+            {
+                enemy.RpcSetActive(true);
+            }
+
+            Bullet bullet = obj.GetComponent<Bullet>();
+            if (bullet != null)
+            {
+                bullet.RpcSetActive(true);
+            }
+        }
+
         return obj;
     }
 
@@ -53,8 +83,35 @@ public class PrefabCacheSystem
             return false;
 
         _gameObject.SetActive(false);
+        if (((FWNetworkManager)FWNetworkManager.singleton).isServer == true)
+        {
+            Enemy enemy = _gameObject.GetComponent<Enemy>();
+            if (enemy != null)
+            {
+                enemy.RpcSetActive(false);
+            }
+            Bullet bullet = _gameObject.GetComponent<Bullet>();
+            if (bullet != null)
+            {
+                bullet.RpcSetActive(false);
+            }
+        }
 
         caches[_filePath].Enqueue(_gameObject);
         return true;
+    }
+
+    public void Add(string _filePath, GameObject _obj)
+    {
+        Queue<GameObject> queue;
+        if (caches.ContainsKey(_filePath) == true)
+        {
+            queue = caches[_filePath];
+        }
+        else
+        {
+            queue = new Queue<GameObject>();
+            caches.Add(_filePath, queue);
+        }
     }
 }
